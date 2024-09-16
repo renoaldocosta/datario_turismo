@@ -227,7 +227,10 @@ def main():
     df = load_df()
     
     df= sidebar(df)
-    df_csv = df.copy()
+    try:
+        df_csv = df.copy()
+    except:
+        pass
     customizacao()
     cabeçalho()
     
@@ -250,7 +253,6 @@ def main():
         mkd_text('', level='subheader', position='center')
         mkd_text_divider('Visualizações', level='subheader', position='center')
         
-        raw_df = st.session_state['df']
         continente = df['Continente'].unique()
         ano_menor = df['Ano'].min()
         ano_maior = df['Ano'].max()

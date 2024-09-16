@@ -58,55 +58,115 @@ def customizacao():
 
 
 def sidebar(df, expanded=True, mostrar_dados=True):
-    
     with st.sidebar:
         st.title('Rio de Janeiro: A Porta de Entrada pelos Ares')
-        # Escolher a cor de fundo com color picker
-        
+
         with st.expander('Filtros', expanded=expanded):    
             mkd_text("", level='h6')
             mkd_text("Região", level='h4')
-            continentes = st.radio('Região', df['Continente'].unique(), key='radio_regiao')
-            if continentes:
-                df = df[df['Continente'] == continentes]
 
+            # Verifica se o continente já foi selecionado no session_state
+            continente_anterior = st.session_state.get('continente', None)
+            continente_selecionado = st.session_state.get('continente', df['Continente'].unique()[0])
+
+            # Seleção de Continente com persistência
+            continentes = st.radio('Região', df['Continente'].unique(), key='radio_regiao',
+                                   index=list(df['Continente'].unique()).index(continente_selecionado))
+
+            # Atualizar o session_state com o continente selecionado
+            st.session_state['continente'] = continentes
+
+            # Verificar se o continente mudou
+            continente_mudou = continente_anterior != continentes
+
+            # Filtrar o dataframe pelo continente selecionado
+            df_continente = df[df['Continente'] == continentes]
 
             mkd_text("", level='h6')
             mkd_text("Países", level='h4')
-            # Corrigido o filtro dos países pelo continente selecionado
-            paises = st.multiselect('Selecione os países', df[df['Continente'] == continentes]['País'].unique(),placeholder='Todos os países da região',help='Selecione os países que deseja visualizar', key='mult')
+
+            # Seleção de País com persistência, filtrado pelo continente
+            paises_disponiveis = df_continente['País'].unique()
+
+            # Se o continente mudou, resetar a seleção de países
+            if continente_mudou:
+                st.session_state['paises'] = []
+
+            # Garantir que os países selecionados ainda estão disponíveis
+            paises_selecionados = [p for p in st.session_state.get('paises', []) if p in paises_disponiveis]
+
+            paises = st.multiselect(
+                'Selecione os países',
+                paises_disponiveis,
+                placeholder='Todos os países da região',
+                help='Selecione os países que deseja visualizar', 
+                key='mult', 
+                default=paises_selecionados
+            )
+
+            # Atualizar o session_state com os países selecionados
+            st.session_state['paises'] = paises
+
+            # Filtrar o dataframe pelos países selecionados
             if paises:
-                df = df[df['País'].isin(paises)]
-            
+                df_paises = df_continente[df_continente['País'].isin(paises)]
+            else:
+                df_paises = df_continente
+
             mkd_paragraph('')
             mkd_paragraph('')
-        
-            # Determinando os anos disponíveis para os países selecionados
+
+            # Filtro de Período com persistência
             mkd_text("Período", level='h4')
-            anos_disponiveis = sorted(df['Ano'].unique())
-            
+
+            # Obter os anos disponíveis após os filtros
+            anos_disponiveis = sorted(df_paises['Ano'].unique())
+
+            # Se o continente ou os países mudaram, resetar a seleção de anos
+            if continente_mudou or 'paises' in st.session_state and st.session_state['paises'] != paises_selecionados:
+                st.session_state['anos'] = (min(anos_disponiveis), max(anos_disponiveis))
+
+            # Garantir que os anos selecionados estão disponíveis
+            anos_selecionados = st.session_state.get('anos', (min(anos_disponiveis), max(anos_disponiveis)))
+            ano_inicio, ano_fim = anos_selecionados
+
+            # Ajustar anos selecionados se não estiverem nos anos disponíveis
+            if ano_inicio not in anos_disponiveis:
+                ano_inicio = min(anos_disponiveis)
+            if ano_fim not in anos_disponiveis:
+                ano_fim = max(anos_disponiveis)
+
+            # Slider de seleção de anos
             ano_inicial, ano_final = st.select_slider(
                 'Selecione o período de análise',
-                options=anos_disponiveis,  # Certificando que os anos estão ordenados e filtrados
-                value=(min(anos_disponiveis), max(anos_disponiveis)),  # Definindo o intervalo padrão de anos
+                options=anos_disponiveis,
+                value=(ano_inicio, ano_fim),
                 key='slider_ano'
             )
-            df = df[(df['Ano'] >= ano_inicial) & (df['Ano'] <= ano_final) ]
-        
+
+            # Atualizar o session_state com os anos selecionados
+            st.session_state['anos'] = (ano_inicial, ano_final)
+
+            # Filtrar o dataframe pelos anos selecionados
+            df_final = df_paises[(df_paises['Ano'] >= ano_inicial) & (df_paises['Ano'] <= ano_final)]
+
             st.divider()
             
-                    
+            # Exibir dados com barra de progresso se solicitado
             if st.checkbox('Visualizar Dados?', key='mostrardados', help='Mostrar Dados em métricas e tabelas', value=mostrar_dados):
                 st.session_state['mostrarcoluna'] = True
-                x='''progress_text = "Operação em progresso. Por favor, aguarde."
+                
+                progress_text = "Operação em progresso. Por favor, aguarde."
                 my_bar = st.progress(0, text=progress_text)
 
                 for percent_complete in range(100):
                     import time
                     time.sleep(0.01)
                     my_bar.progress(percent_complete + 1, text=progress_text)
+                
                 time.sleep(1)
-                my_bar.empty()'''
-                return df
+                my_bar.empty()
+                
+                return df_final  # Retorna o DataFrame filtrado
             else:
                 st.session_state['mostrarcoluna'] = False

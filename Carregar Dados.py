@@ -30,6 +30,7 @@ def load_data(file):
             time.sleep(1)
             my_bar.empty()
             
+            
         return df
     except Exception as e:
         st.error(f"Erro: {e}")
@@ -42,20 +43,6 @@ def convert_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 
-        
-        
-def upload_PDF():
-    import pdfplumber
-    uploaded_pdf_file = st.file_uploader("Escolha um arquivo PDF", type="pdf", label_visibility='hidden')
-    if uploaded_pdf_file is not None:
-        # Ler o arquivo PDF
-        with pdfplumber.open(uploaded_pdf_file) as pdf:
-            text = ''
-            for page in pdf.pages:
-                for row in page.extract_text().split('\n'):
-                    text += row + '\n\n'
-            return text
-        
         
 
 def processar_dados(df):
@@ -159,6 +146,7 @@ def main(first):
 
 if __name__ == '__main__':
     first = False
+    
     # Inicializa df vazio no session_state se não existir
     main(True)
         
